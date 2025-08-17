@@ -8,6 +8,7 @@ import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.chittycollectionapp.data.model.Dividend
 import com.example.chittycollectionapp.data.model.InitialData
 import com.example.chittycollectionapp.data.repository.ChittyRepository
 import com.google.gson.Gson
@@ -35,8 +36,24 @@ class MainViewModel(application: Application, private val repository: ChittyRepo
             }
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    private val _selectedChittyDividend = MutableStateFlow<Dividend?>(null)
+    val selectedChittyDividend: StateFlow<Dividend?> = _selectedChittyDividend
+
     fun onSearchQueryChanged(query: String) {
         _searchQuery.value = query
+    }
+
+    fun saveDividend(chittyId: String, amount: Long, termDate: String) {
+        viewModelScope.launch {
+            val dividend = Dividend(chittyId = chittyId, dividendAmount = amount, termDate = termDate)
+            repository.insertDividend(dividend)
+        }
+    }
+
+    fun getLatestDividend(chittyId: String) {
+        viewModelScope.launch {
+            _selectedChittyDividend.value = repository.getLatestDividendForChitty(chittyId)
+        }
     }
 
     fun loadInitialData(uri: Uri) {

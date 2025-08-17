@@ -9,11 +9,18 @@ import com.example.chittycollectionapp.data.model.AgentAuth
 import com.example.chittycollectionapp.data.model.AgentCredential
 import java.security.MessageDigest
 
+import com.example.chittycollectionapp.data.local.DividendDao
+import com.example.chittycollectionapp.data.model.AgentAuth
+import com.example.chittycollectionapp.data.model.AgentCredential
+import com.example.chittycollectionapp.data.model.Dividend
+import java.security.MessageDigest
+
 class ChittyRepository(
     private val agentDao: AgentDao,
     private val chittyDao: ChittyDao,
     private val collectionDao: CollectionDao,
-    private val agentCredentialDao: com.example.chittycollectionapp.data.local.AgentCredentialDao
+    private val agentCredentialDao: com.example.chittycollectionapp.data.local.AgentCredentialDao,
+    private val dividendDao: DividendDao
 ) {
     suspend fun insertInitialData(initialData: InitialData) {
         agentDao.insertAgentDetails(initialData.agentDetails)
@@ -66,4 +73,8 @@ class ChittyRepository(
     fun getAllCollections() = collectionDao.getAllCollections()
 
     suspend fun getPendingCollectionsForMember(memberId: String) = collectionDao.getPendingCollectionsForMember(memberId)
+
+    suspend fun insertDividend(dividend: Dividend) = dividendDao.insertDividend(dividend)
+
+    suspend fun getLatestDividendForChitty(chittyId: String) = dividendDao.getLatestDividendForChitty(chittyId)
 }

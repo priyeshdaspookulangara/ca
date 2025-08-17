@@ -12,8 +12,8 @@ import com.example.chittycollectionapp.data.model.Converters
 import com.example.chittycollectionapp.data.model.Member
 
 @Database(
-    entities = [AgentDetails::class, ChittyGroup::class, Member::class, Collection::class, AgentCredential::class],
-    version = 2,
+    entities = [AgentDetails::class, ChittyGroup::class, Member::class, Collection::class, AgentCredential::class, Dividend::class],
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -23,6 +23,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun chittyDao(): ChittyDao
     abstract fun collectionDao(): CollectionDao
     abstract fun agentCredentialDao(): AgentCredentialDao
+    abstract fun dividendDao(): DividendDao
 
     companion object {
         @Volatile

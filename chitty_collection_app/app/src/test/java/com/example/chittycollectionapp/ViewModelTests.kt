@@ -72,4 +72,13 @@ class ViewModelTests {
 
         assert(viewModel.loginState.value is com.example.chittycollectionapp.ui.viewmodel.LoginState.Success)
     }
+
+    @Test
+    fun `insert and get dividend`() = runBlocking {
+        val dividend = com.example.chittycollectionapp.data.model.Dividend(chittyId = "C01", dividendAmount = 500, termDate = "2025-08")
+        repository.insertDividend(dividend)
+
+        val latestDividend = repository.getLatestDividendForChitty("C01")
+        assert(latestDividend?.dividendAmount == 500L)
+    }
 }

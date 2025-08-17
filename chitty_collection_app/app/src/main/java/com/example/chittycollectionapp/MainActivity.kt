@@ -57,9 +57,11 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.chittycollectionapp.data.model.ChittyGroup
 import com.example.chittycollectionapp.data.model.Member
 import com.example.chittycollectionapp.ui.theme.ChittyCollectionAppTheme
@@ -72,8 +74,10 @@ import com.example.chittycollectionapp.ui.viewmodel.MainViewModel
 import com.example.chittycollectionapp.ui.viewmodel.MemberWithPendingAmount
 import com.example.chittycollectionapp.ui.viewmodel.PaymentHistoryViewModel
 import com.example.chittycollectionapp.ui.viewmodel.ViewModelFactory
+import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -117,12 +121,23 @@ fun AppNavigation(application: BaseApplication) {
             val viewModel: DetailsViewModel = viewModel(factory = factory)
             DetailsScreen(viewModel = viewModel, navController = navController)
         }
-        composable("collection/{chittyId}/{memberId}") { backStackEntry ->
+        composable(
+            "collection/{chittyId}/{memberId}/{installmentAmount}",
+            arguments = listOf(navArgument("installmentAmount") { type = NavType.LongType })
+        ) { backStackEntry ->
             val chittyId = backStackEntry.arguments?.getString("chittyId")
             val memberId = backStackEntry.arguments?.getString("memberId")
+            val installmentAmount = backStackEntry.arguments?.getLong("installmentAmount")
             val factory = ViewModelFactory(application, application.repository, chittyId, memberId)
             val viewModel: CollectionViewModel = viewModel(factory = factory)
-            CollectionScreen(viewModel = viewModel, navController = navController)
+            val mainViewModel: MainViewModel = viewModel(factory = ViewModelFactory(application, application.repository))
+            CollectionScreen(
+                viewModel = viewModel,
+                mainViewModel = mainViewModel,
+                navController = navController,
+                chittyId = chittyId,
+                installmentAmount = installmentAmount ?: 0L
+            )
         }
         composable("settings") {
             val factory = ViewModelFactory(application, application.repository)
@@ -194,6 +209,8 @@ fun MainScreen(viewModel: MainViewModel, navController: NavHostController) {
     val searchQuery by viewModel.searchQuery.collectAsState()
     var showMenu by remember { mutableStateOf(false) }
     var searchMode by remember { mutableStateOf(false) }
+    var selectedChitty by remember { mutableStateOf<ChittyGroup?>(null) }
+    var dividendAmount by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
@@ -240,11 +257,40 @@ fun MainScreen(viewModel: MainViewModel, navController: NavHostController) {
             )
         }
     ) { paddingValues ->
-        LazyColumn(modifier = Modifier.padding(paddingValues)) {
-            items(chittyGroups) { chittyGroup ->
-                ChittyGroupCard(chittyGroup = chittyGroup, onClick = {
-                    navController.navigate("details/${chittyGroup.chittyId}")
-                })
+        Column(modifier = Modifier.padding(paddingValues)) {
+            ExposedDropdownMenu(
+                label = "Select Chitty Group",
+                options = chittyGroups.map { it.chittyName },
+                selectedOption = selectedChitty?.chittyName ?: "",
+                onOptionSelected = { chittyName ->
+                    selectedChitty = chittyGroups.find { it.chittyName == chittyName }
+                }
+            )
+            OutlinedTextField(
+                value = dividendAmount,
+                onValueChange = { dividendAmount = it },
+                label = { Text("Dividend Amount") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+            )
+            Button(
+                onClick = {
+                    selectedChitty?.let {
+                        val termDate = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Date())
+                        viewModel.saveDividend(it.chittyId, dividendAmount.toLongOrNull() ?: 0, termDate)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().padding(16.dp)
+            ) {
+                Text("Save Dividend")
+            }
+
+            LazyColumn {
+                items(chittyGroups) { chittyGroup ->
+                    ChittyGroupCard(chittyGroup = chittyGroup, onClick = {
+                        navController.navigate("details/${chittyGroup.chittyId}")
+                    })
+                }
             }
         }
     }
@@ -281,7 +327,7 @@ fun DetailsScreen(viewModel: DetailsViewModel, navController: NavHostController)
             onDismiss = { showDialog = false },
             onRecordCollection = {
                 showDialog = false
-                navController.navigate("collection/${selectedMember?.chittyId}/${selectedMember?.memberId}")
+                navController.navigate("collection/${selectedMember?.chittyId}/${selectedMember?.memberId}/${chittyGroup?.installmentAmount}")
             },
             onViewHistory = {
                 showDialog = false
@@ -369,11 +415,29 @@ fun MemberCard(memberWithPendingAmount: MemberWithPendingAmount, onClick: () -> 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CollectionScreen(viewModel: CollectionViewModel, navController: NavHostController) {
+fun CollectionScreen(
+    viewModel: CollectionViewModel,
+    mainViewModel: MainViewModel,
+    navController: NavHostController,
+    chittyId: String?,
+    installmentAmount: Long
+) {
     var amount by remember { mutableStateOf("") }
     var paymentMethod by remember { mutableStateOf("Cash") }
     var paymentStatus by remember { mutableStateOf("Paid") }
     var notes by remember { mutableStateOf("") }
+    val dividend by mainViewModel.selectedChittyDividend.collectAsState()
+
+    LaunchedEffect(chittyId) {
+        chittyId?.let {
+            mainViewModel.getLatestDividend(it)
+        }
+    }
+
+    val amountToPay = dividend?.let { installmentAmount - it.dividendAmount } ?: installmentAmount
+    LaunchedEffect(amountToPay) {
+        amount = amountToPay.toString()
+    }
 
     Scaffold(
         topBar = {
