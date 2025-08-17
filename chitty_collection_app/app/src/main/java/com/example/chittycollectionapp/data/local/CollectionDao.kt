@@ -13,5 +13,8 @@ interface CollectionDao {
     suspend fun insertCollection(collection: Collection)
 
     @Query("SELECT * FROM collections WHERE timestamp BETWEEN :startDate AND :endDate")
-    fun getCollectionsByDateRange(startDate: String, endDate: String): Flow<List<Collection>>
+    fun getCollectionsByDateRangeFlow(startDate: String, endDate: String): Flow<List<Collection>>
+
+    @Query("SELECT * FROM collections WHERE timestamp BETWEEN :startDate AND :endDate")
+    suspend fun getCollectionsByDateRange(startDate: String, endDate: String): List<Collection>
 }

@@ -20,6 +20,9 @@ interface ChittyDao {
     @Query("SELECT * FROM chitty_groups")
     fun getAllChittyGroups(): Flow<List<ChittyGroup>>
 
+    @Query("SELECT * FROM chitty_groups WHERE chittyName LIKE '%' || :query || '%'")
+    fun searchChittyGroups(query: String): Flow<List<ChittyGroup>>
+
     @Transaction
     @Query("SELECT * FROM chitty_groups WHERE chittyId = :chittyId")
     suspend fun getChittyGroupWithMembers(chittyId: String): ChittyGroup

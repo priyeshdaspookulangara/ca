@@ -27,4 +27,17 @@ class ChittyRepository(
     }
 
     fun getAllChittyGroups() = chittyDao.getAllChittyGroups()
+
+    fun searchChittyGroups(query: String) = chittyDao.searchChittyGroups(query)
+
+    suspend fun getChittyGroupWithMembers(chittyId: String) = chittyDao.getChittyGroupWithMembers(chittyId)
+
+    suspend fun insertCollection(collection: com.example.chittycollectionapp.data.model.Collection) {
+        collectionDao.insertCollection(collection)
+    }
+
+    suspend fun getCollectionsByDateRange(startDate: String, endDate: String) =
+        collectionDao.getCollectionsByDateRange(startDate, endDate)
+
+    suspend fun getAgentDetails() = agentDao.getAgentDetails()
 }
