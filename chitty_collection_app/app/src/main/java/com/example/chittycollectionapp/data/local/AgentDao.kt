@@ -8,7 +8,7 @@ import com.example.chittycollectionapp.data.model.AgentDetails
 
 @Dao
 interface AgentDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAgentDetails(agentDetails: AgentDetails)
 
     @Query("SELECT * FROM agent_details LIMIT 1")

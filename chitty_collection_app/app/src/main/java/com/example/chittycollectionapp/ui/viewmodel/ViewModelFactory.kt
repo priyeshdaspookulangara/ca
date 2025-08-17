@@ -21,6 +21,15 @@ class ViewModelFactory(
         if (modelClass.isAssignableFrom(CollectionViewModel::class.java)) {
             return CollectionViewModel(repository, chittyId ?: throw IllegalArgumentException("ChittyId is required for CollectionViewModel"), memberId ?: throw IllegalArgumentException("MemberId is required for CollectionViewModel")) as T
         }
+        if (modelClass.isAssignableFrom(LoginViewModel::class.java)) {
+            return LoginViewModel(repository) as T
+        }
+        if (modelClass.isAssignableFrom(PaymentHistoryViewModel::class.java)) {
+            return PaymentHistoryViewModel(repository, memberId ?: throw IllegalArgumentException("MemberId is required for PaymentHistoryViewModel")) as T
+        }
+        if (modelClass.isAssignableFrom(DefaultersViewModel::class.java)) {
+            return DefaultersViewModel(repository) as T
+        }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
 }

@@ -2,17 +2,20 @@ package com.example.chittycollectionapp.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.example.chittycollectionapp.data.model.ChittyGroup
+import com.example.chittycollectionapp.data.model.Member
 import com.example.chittycollectionapp.data.repository.ChittyRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+
+data class MemberWithPendingAmount(
+    val member: Member,
+    val pendingAmount: Long
+)
 
 class DetailsViewModel(
     private val repository: ChittyRepository,
@@ -25,24 +28,28 @@ class DetailsViewModel(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
 
-    val filteredMembers: StateFlow<List<com.example.chittycollectionapp.data.model.Member>> =
-        searchQuery.flatMapLatest { query ->
-            _chittyGroup.map { group ->
-                if (query.isEmpty()) {
-                    group?.members ?: emptyList()
-                } else {
-                    group?.members?.filter { it.memberName.contains(query, ignoreCase = true) } ?: emptyList()
-                }
+    private val _membersWithPendingAmount = MutableStateFlow<List<MemberWithPendingAmount>>(emptyList())
+
+    val filteredMembers: StateFlow<List<MemberWithPendingAmount>> =
+        combine(searchQuery, _membersWithPendingAmount) { query, members ->
+            if (query.isEmpty()) {
+                members
+            } else {
+                members.filter { it.member.memberName.contains(query, ignoreCase = true) }
             }
         }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     init {
-        loadChittyGroupDetails()
-    }
-
-    private fun loadChittyGroupDetails() {
         viewModelScope.launch {
-            _chittyGroup.value = repository.getChittyGroupWithMembers(chittyId)
+            repository.getChittyGroupWithMembers(chittyId)?.let { group ->
+                _chittyGroup.value = group
+                val membersWithPending = group.members.map { member ->
+                    val pendingCollections = repository.getPendingCollectionsForMember(member.memberId)
+                    val pendingAmount = pendingCollections.sumOf { it.collectionAmount }
+                    MemberWithPendingAmount(member, pendingAmount)
+                }
+                _membersWithPendingAmount.value = membersWithPending
+            }
         }
     }
 

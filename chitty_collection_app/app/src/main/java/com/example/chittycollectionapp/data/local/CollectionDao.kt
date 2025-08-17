@@ -17,4 +17,13 @@ interface CollectionDao {
 
     @Query("SELECT * FROM collections WHERE timestamp BETWEEN :startDate AND :endDate")
     suspend fun getCollectionsByDateRange(startDate: String, endDate: String): List<Collection>
+
+    @Query("SELECT * FROM collections WHERE memberId = :memberId ORDER BY timestamp DESC")
+    fun getCollectionsForMember(memberId: String): Flow<List<Collection>>
+
+    @Query("SELECT * FROM collections")
+    fun getAllCollections(): Flow<List<Collection>>
+
+    @Query("SELECT * FROM collections WHERE memberId = :memberId AND paymentStatus = 'Pending'")
+    suspend fun getPendingCollectionsForMember(memberId: String): List<Collection>
 }

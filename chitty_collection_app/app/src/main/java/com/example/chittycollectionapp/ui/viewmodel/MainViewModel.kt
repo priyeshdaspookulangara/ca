@@ -52,6 +52,19 @@ class MainViewModel(application: Application, private val repository: ChittyRepo
         }
     }
 
+    fun loadAgentData(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                val inputStream = getApplication<Application>().contentResolver.openInputStream(uri)
+                val reader = BufferedReader(InputStreamReader(inputStream))
+                val agentAuthList = Gson().fromJson(reader, com.example.chittycollectionapp.data.model.AgentAuthList::class.java)
+                repository.insertAgentCredentials(agentAuthList.agents)
+            } catch (e: Exception) {
+                // Handle error
+            }
+        }
+    }
+
     fun exportCollections(startDate: String, endDate: String) {
         viewModelScope.launch {
             val agentDetails = repository.getAgentDetails()
