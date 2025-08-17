@@ -14,7 +14,8 @@ import kotlinx.coroutines.launch
 
 data class MemberWithPendingAmount(
     val member: Member,
-    val pendingAmount: Long
+    val pendingAmount: Long,
+    val isDefaulter: Boolean
 )
 
 class DetailsViewModel(
@@ -43,10 +44,25 @@ class DetailsViewModel(
         viewModelScope.launch {
             repository.getChittyGroupWithMembers(chittyId)?.let { group ->
                 _chittyGroup.value = group
+                val today = java.util.Calendar.getInstance()
+                val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                val mostRecentDueDate = group.members
+                    .map { dateFormat.parse(it.dueDate) }
+                    .filter { !it.after(today.time) }
+                    .maxOrNull()
+
                 val membersWithPending = group.members.map { member ->
                     val pendingCollections = repository.getPendingCollectionsForMember(member.memberId)
                     val pendingAmount = pendingCollections.sumOf { it.collectionAmount }
-                    MemberWithPendingAmount(member, pendingAmount)
+                    val isDefaulter = if (mostRecentDueDate != null) {
+                        !repository.getCollectionsForMemberSync(member.memberId).any {
+                            val collectionDate = dateFormat.parse(it.timestamp.substring(0, 10))
+                            collectionDate == mostRecentDueDate && it.paymentStatus == "Paid"
+                        }
+                    } else {
+                        false
+                    }
+                    MemberWithPendingAmount(member, pendingAmount, isDefaulter)
                 }
                 _membersWithPendingAmount.value = membersWithPending
             }

@@ -43,9 +43,9 @@ class MainViewModel(application: Application, private val repository: ChittyRepo
         _searchQuery.value = query
     }
 
-    fun saveDividend(chittyId: String, amount: Long, termDate: String) {
+    fun saveDividend(chittyId: String, amount: Long, termDate: String, defaultersIneligible: Boolean) {
         viewModelScope.launch {
-            val dividend = Dividend(chittyId = chittyId, dividendAmount = amount, termDate = termDate)
+            val dividend = Dividend(chittyId = chittyId, dividendAmount = amount, termDate = termDate, defaultersIneligible = defaultersIneligible)
             repository.insertDividend(dividend)
         }
     }

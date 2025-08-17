@@ -20,5 +20,6 @@ data class Dividend(
     val dividendId: Int = 0,
     val chittyId: String,
     val dividendAmount: Long,
-    val termDate: String // Format: "YYYY-MM"
+    val termDate: String, // Format: "YYYY-MM"
+    val defaultersIneligible: Boolean = false
 )

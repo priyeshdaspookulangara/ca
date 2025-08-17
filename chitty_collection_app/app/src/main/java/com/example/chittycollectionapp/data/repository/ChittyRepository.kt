@@ -77,4 +77,6 @@ class ChittyRepository(
     suspend fun insertDividend(dividend: Dividend) = dividendDao.insertDividend(dividend)
 
     suspend fun getLatestDividendForChitty(chittyId: String) = dividendDao.getLatestDividendForChitty(chittyId)
+
+    suspend fun getCollectionsForMemberSync(memberId: String) = collectionDao.getCollectionsForMemberSync(memberId)
 }

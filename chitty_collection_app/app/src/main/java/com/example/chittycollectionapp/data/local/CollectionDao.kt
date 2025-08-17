@@ -26,4 +26,7 @@ interface CollectionDao {
 
     @Query("SELECT * FROM collections WHERE memberId = :memberId AND paymentStatus = 'Pending'")
     suspend fun getPendingCollectionsForMember(memberId: String): List<Collection>
+
+    @Query("SELECT * FROM collections WHERE memberId = :memberId")
+    suspend fun getCollectionsForMemberSync(memberId: String): List<Collection>
 }

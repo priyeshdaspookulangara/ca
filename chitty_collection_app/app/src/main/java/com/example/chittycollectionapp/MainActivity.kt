@@ -122,12 +122,16 @@ fun AppNavigation(application: BaseApplication) {
             DetailsScreen(viewModel = viewModel, navController = navController)
         }
         composable(
-            "collection/{chittyId}/{memberId}/{installmentAmount}",
-            arguments = listOf(navArgument("installmentAmount") { type = NavType.LongType })
+            "collection/{chittyId}/{memberId}/{installmentAmount}/{isDefaulter}",
+            arguments = listOf(
+                navArgument("installmentAmount") { type = NavType.LongType },
+                navArgument("isDefaulter") { type = NavType.BoolType }
+            )
         ) { backStackEntry ->
             val chittyId = backStackEntry.arguments?.getString("chittyId")
             val memberId = backStackEntry.arguments?.getString("memberId")
             val installmentAmount = backStackEntry.arguments?.getLong("installmentAmount")
+            val isDefaulter = backStackEntry.arguments?.getBoolean("isDefaulter")
             val factory = ViewModelFactory(application, application.repository, chittyId, memberId)
             val viewModel: CollectionViewModel = viewModel(factory = factory)
             val mainViewModel: MainViewModel = viewModel(factory = ViewModelFactory(application, application.repository))
@@ -136,7 +140,8 @@ fun AppNavigation(application: BaseApplication) {
                 mainViewModel = mainViewModel,
                 navController = navController,
                 chittyId = chittyId,
-                installmentAmount = installmentAmount ?: 0L
+                installmentAmount = installmentAmount ?: 0L,
+                isDefaulter = isDefaulter ?: false
             )
         }
         composable("settings") {
@@ -211,6 +216,7 @@ fun MainScreen(viewModel: MainViewModel, navController: NavHostController) {
     var searchMode by remember { mutableStateOf(false) }
     var selectedChitty by remember { mutableStateOf<ChittyGroup?>(null) }
     var dividendAmount by remember { mutableStateOf("") }
+    var defaultersIneligible by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -273,11 +279,19 @@ fun MainScreen(viewModel: MainViewModel, navController: NavHostController) {
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
             )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            ) {
+                Text("Dividend Not Applicable to Defaulters")
+                Spacer(modifier = Modifier.weight(1f))
+                Switch(checked = defaultersIneligible, onCheckedChange = { defaultersIneligible = it })
+            }
             Button(
                 onClick = {
                     selectedChitty?.let {
                         val termDate = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(Date())
-                        viewModel.saveDividend(it.chittyId, dividendAmount.toLongOrNull() ?: 0, termDate)
+                        viewModel.saveDividend(it.chittyId, dividendAmount.toLongOrNull() ?: 0, termDate, defaultersIneligible)
                     }
                 },
                 modifier = Modifier.fillMaxWidth().padding(16.dp)
@@ -320,18 +334,18 @@ fun DetailsScreen(viewModel: DetailsViewModel, navController: NavHostController)
     val searchQuery by viewModel.searchQuery.collectAsState()
     var searchMode by remember { mutableStateOf(false) }
     var showDialog by remember { mutableStateOf(false) }
-    var selectedMember by remember { mutableStateOf<Member?>(null) }
+    var selectedMember by remember { mutableStateOf<MemberWithPendingAmount?>(null) }
 
     if (showDialog) {
         MemberActionDialog(
             onDismiss = { showDialog = false },
             onRecordCollection = {
                 showDialog = false
-                navController.navigate("collection/${selectedMember?.chittyId}/${selectedMember?.memberId}/${chittyGroup?.installmentAmount}")
+                navController.navigate("collection/${selectedMember?.member?.chittyId}/${selectedMember?.member?.memberId}/${chittyGroup?.installmentAmount}/${selectedMember?.isDefaulter}")
             },
             onViewHistory = {
                 showDialog = false
-                navController.navigate("paymentHistory/${selectedMember?.memberId}")
+                navController.navigate("paymentHistory/${selectedMember?.member?.memberId}")
             }
         )
     }
@@ -362,7 +376,7 @@ fun DetailsScreen(viewModel: DetailsViewModel, navController: NavHostController)
         LazyColumn(modifier = Modifier.padding(paddingValues)) {
             items(filteredMembers) { memberWithPendingAmount ->
                 MemberCard(memberWithPendingAmount = memberWithPendingAmount, onClick = {
-                    selectedMember = memberWithPendingAmount.member
+                    selectedMember = memberWithPendingAmount
                     showDialog = true
                 })
             }
@@ -420,7 +434,8 @@ fun CollectionScreen(
     mainViewModel: MainViewModel,
     navController: NavHostController,
     chittyId: String?,
-    installmentAmount: Long
+    installmentAmount: Long,
+    isDefaulter: Boolean
 ) {
     var amount by remember { mutableStateOf("") }
     var paymentMethod by remember { mutableStateOf("Cash") }
@@ -434,7 +449,12 @@ fun CollectionScreen(
         }
     }
 
-    val amountToPay = dividend?.let { installmentAmount - it.dividendAmount } ?: installmentAmount
+    val amountToPay = if (dividend?.defaultersIneligible == true && isDefaulter) {
+        installmentAmount
+    } else {
+        dividend?.let { installmentAmount - it.dividendAmount } ?: installmentAmount
+    }
+
     LaunchedEffect(amountToPay) {
         amount = amountToPay.toString()
     }

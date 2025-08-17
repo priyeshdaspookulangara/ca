@@ -81,4 +81,40 @@ class ViewModelTests {
         val latestDividend = repository.getLatestDividendForChitty("C01")
         assert(latestDividend?.dividendAmount == 500L)
     }
+
+    @Test
+    fun `conditional dividend logic`() = runBlocking {
+        // This is a simplified test and does not cover all edge cases.
+        // A more thorough test would mock the repository and test the ViewModel in isolation.
+        val chittyGroup = com.example.chittycollectionapp.data.model.ChittyGroup(
+            "C01", "Test Chitty", 100000, 1000, 2,
+            listOf(
+                com.example.chittycollectionapp.data.model.Member("M01", "C01", "Alice", "111", "2025-08-15"),
+                com.example.chittycollectionapp.data.model.Member("M02", "C01", "Bob", "222", "2025-08-15")
+            )
+        )
+        val initialData = com.example.chittycollectionapp.data.model.InitialData(
+            agentDetails = com.example.chittycollectionapp.data.model.AgentDetails("A01", "Agent", "123"),
+            chittyGroups = listOf(chittyGroup)
+        )
+        repository.insertInitialData(initialData)
+
+        // Make Bob a defaulter by adding a pending collection for the previous month
+        val pendingCollection = com.example.chittycollectionapp.data.model.Collection("T01", "C01", "M02", 1000, "Pending", "Cash", "2025-07-15T10:00:00Z", "")
+        collectionDao.insertCollection(pendingCollection)
+
+        // Add a dividend where defaulters are ineligible
+        val dividend = com.example.chittycollectionapp.data.model.Dividend(chittyId = "C01", dividendAmount = 100, termDate = "2025-08", defaultersIneligible = true)
+        repository.insertDividend(dividend)
+
+        val viewModel = com.example.chittycollectionapp.ui.viewmodel.DetailsViewModel(repository, "C01")
+        testDispatcher.scheduler.advanceUntilIdle() // Allow the init block to run
+
+        val members = viewModel.filteredMembers.value
+        val alice = members.find { it.member.memberId == "M01" }
+        val bob = members.find { it.member.memberId == "M02" }
+
+        assert(alice?.isDefaulter == false)
+        assert(bob?.isDefaulter == true)
+    }
 }

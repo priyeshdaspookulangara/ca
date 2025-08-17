@@ -13,7 +13,7 @@ import com.example.chittycollectionapp.data.model.Member
 
 @Database(
     entities = [AgentDetails::class, ChittyGroup::class, Member::class, Collection::class, AgentCredential::class, Dividend::class],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
